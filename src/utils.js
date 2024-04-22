@@ -9,8 +9,8 @@ export const connectDB = async () => {
     email varchar(255),
     linkedId INT,
     linkPrecedence ENUM("secondary", "primary")  NOT NULL,
-    createdAt DATETIME NOT NULL DEFAULT NOW(),
-    updatedAt DATETIME NOT NULL DEFAULT NOW(),
+    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deletedAt DATETIME
   );`;
   const query2 = `
@@ -72,11 +72,18 @@ export const insertContactDB = async (record) => {
 
 //! INSERT THE NEW VALUES IN CHILDREN DB
 export const insertChildrenDB = async (pid, cid) => {
-  const query = `INSERT INTO CHILDREN 
-                (pid, cid) 
-                    VALUES (?, ?)`;
+  const query = `INSERT INTO CHILDREN (pid, cid) VALUES (?, ?)`;
   const [result] = await DB.query(query, [pid, cid]);
   return result;
+};
+
+//! UPDATE THE PARENT OF THE NODE
+export const updateParent = async (cid, pid) => {
+  let query = `UPDATE CONTACT SET linkedId= ? WHERE id= ?`;
+  await DB.query(query, [pid, cid]);
+  query = `UPDATE CHILDREN SET pid= ? WHERE pid= ?`;
+  insertChildrenDB(pid, cid);
+  await DB.query(query, [pid, cid]);
 };
 
 //! FUNCTION TO GENERATE RESPONSE OBJECT
@@ -90,15 +97,27 @@ export const generateResponse = async (parentId) => {
     },
   };
   const parentData = await getUser(parentId);
-  if (parentData.email) userResponse.contact.emails.push(parentData.email);
-  if (parentData.phoneNumber)
+  const numberSet = new Set();
+  const emailSet = new Set();
+  if (parentData.email) {
+    emailSet.add(parentData.email);
+    userResponse.contact.emails.push(parentData.email);
+  }
+  if (parentData.phoneNumber) {
+    numberSet.add(parentData.phoneNumber);
     userResponse.contact.phoneNumbers.push(parentData.phoneNumber);
+  }
   const childrenData = await getChildrens(parentId);
   for (let index = 0; index < childrenData.length; index++) {
     const currUser = await getUser(childrenData[index].cid);
-    if (currUser.phoneNumber)
+    if (currUser.phoneNumber && !numberSet.has(currUser.phoneNumber)) {
       userResponse.contact.phoneNumbers.push(currUser.phoneNumber);
-    if (currUser.email) userResponse.contact.emails.push(currUser.email);
+      numberSet.add(currUser.phoneNumber);
+    }
+    if (currUser.email && !emailSet.has(currUser.email)) {
+      userResponse.contact.emails.push(currUser.email);
+      emailSet.add(currUser.email);
+    }
     userResponse.contact.secondaryContactIds.push(currUser.id);
   }
   return userResponse;

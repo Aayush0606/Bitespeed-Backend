@@ -7,6 +7,7 @@ import {
   insertContactDB,
   insertChildrenDB,
   generateResponse,
+  updateParent,
 } from "./utils.js";
 
 const app = express();
@@ -67,8 +68,16 @@ app.post("/identify", async (req, res) => {
     const userResponse = await generateResponse(parentId);
     return res.status(200).json(userResponse);
   }
-
-  res.json({});
+  //! IF BOTH THE FIELDS ARE ALREADY THERE
+  let parentId, childId;
+  if (emailParent.createdAt > phoneParent.createdAt) {
+    (parentId = phoneParent.id), (childId = emailParent.id);
+  } else {
+    (parentId = emailParent.id), (childId = phoneParent.id);
+  }
+  await updateParent(childId, parentId);
+  const userResponse = await generateResponse(parentId);
+  return res.status(200).json(userResponse);
 });
 
 export default app;
