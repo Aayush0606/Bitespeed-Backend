@@ -1,12 +1,22 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import { getData, insertDB, showDB } from "./utils.js";
+import {
+  connectDB,
+  getData,
+  insertContactDB,
+  insertChildrenDB,
+  generateResponse,
+} from "./utils.js";
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
+app.use(async (req, res, next) => {
+  await connectDB();
+  next();
+});
 
 app.post("/identify", async (req, res) => {
   const { email, phoneNumber } = req.body;
@@ -20,13 +30,10 @@ app.post("/identify", async (req, res) => {
       .status(400)
       .json({ msg: "Either Phone Number or Email is required!!" });
 
-  const emailPreviousRecord = await getData("email", email);
-  const phoneNumberPreviousRecord = await getData("phoneNumber", phoneNumber);
+  const emailParent = await getData("email", email);
+  const phoneParent = await getData("phoneNumber", phoneNumber);
   //! FIRST TIME ENCOUNTRING SUCH RECORD
-  if (
-    emailPreviousRecord.length === 0 &&
-    phoneNumberPreviousRecord.length === 0
-  ) {
+  if (!emailParent && !phoneParent) {
     const newRecordData = {
       phoneNumber: phoneNumber || null,
       email: email || null,
@@ -36,10 +43,31 @@ app.post("/identify", async (req, res) => {
       updatedAt: new Date(),
       deletedAt: null,
     };
-    await insertDB(newRecordData);
-    const dbShow = await showDB();
-    return res.status(200).json(dbShow);
+    const parentData = await insertContactDB(newRecordData);
+    const userResponse = await generateResponse(parentData.insertId);
+    return res.status(200).json(userResponse);
   }
+
+  //! IF ONLY ONE OF THE TWO EXIST
+  else if (!emailParent || !phoneParent) {
+    const parentId = emailParent
+      ? emailParent.linkedId || emailParent.id
+      : phoneParent.linkedId || phoneParent.id;
+    const newRecordData = {
+      phoneNumber: phoneNumber || null,
+      email: email || null,
+      linkedId: parentId,
+      linkPrecedence: "secondary",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+    };
+    const childData = await insertContactDB(newRecordData);
+    await insertChildrenDB(parentId, childData.insertId);
+    const userResponse = await generateResponse(parentId);
+    return res.status(200).json(userResponse);
+  }
+
   res.json({});
 });
 
