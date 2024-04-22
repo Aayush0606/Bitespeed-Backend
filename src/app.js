@@ -23,6 +23,7 @@ app.post("/identify", async (req, res) => {
   const { email, phoneNumber } = req.body;
 
   //! IF BOTH PHONE NO AND EMAIL IS BLANK, RETURN AS BAD REQUEST
+  //! WE CAN ADD SOME MORE CHECKS FOR PHONE NO AND EMAIL
   if (
     (!email || email.trim() === "") &&
     (!phoneNumber || phoneNumber.trim() === "")
@@ -33,7 +34,7 @@ app.post("/identify", async (req, res) => {
 
   const emailParent = await getData("email", email);
   const phoneParent = await getData("phoneNumber", phoneNumber);
-  //! FIRST TIME ENCOUNTRING SUCH RECORD
+  //! FIRST TIME ENCOUNTRING SUCH RECORD(CASE 1,ONLY PRIMARY ENTRY POSSIBLE)
   if (!emailParent && !phoneParent) {
     const newRecordData = {
       phoneNumber: phoneNumber || null,
@@ -49,7 +50,7 @@ app.post("/identify", async (req, res) => {
     return res.status(200).json(userResponse);
   }
 
-  //! IF ONLY ONE OF THE TWO EXIST
+  //! IF ONLY ONE OF THE TWO EXIST(CASE 2,ONLY SECONDARY ENTRY POSSIBLE)
   else if (!emailParent || !phoneParent) {
     const parentId = emailParent
       ? emailParent.linkedId || emailParent.id
@@ -68,7 +69,7 @@ app.post("/identify", async (req, res) => {
     const userResponse = await generateResponse(parentId);
     return res.status(200).json(userResponse);
   }
-  //! IF BOTH THE FIELDS ARE ALREADY THERE
+  //! IF BOTH THE FIELDS ARE ALREADY THERE(CASE 3,ONE PRIMARY ENTRY WILL TURN INTO SECONDARY ENTRY)
   let parentId, childId;
   if (emailParent.createdAt > phoneParent.createdAt) {
     (parentId = phoneParent.id), (childId = emailParent.id);
