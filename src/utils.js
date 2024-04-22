@@ -10,8 +10,8 @@ export const connectDB = async () => {
     email varchar(255),
     linkedId INT,
     linkPrecedence ENUM("secondary", "primary")  NOT NULL,
-    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    createdAt DATETIME NOT NULL,
+    updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deletedAt DATETIME
   );`;
   //! this table will store a realtion between parent and child
@@ -27,6 +27,13 @@ export const connectDB = async () => {
   await DB.query(query1);
   await DB.query(query2);
   console.log(`DB started successfully!!`);
+};
+
+export const clearDB = async () => {
+  let query = `DROP TABLE CONTACT,CHILDREN`;
+  await DB.query(query);
+  // query = `DELETE TABLE CHILDREN;`;
+  // await DB.query(query);
 };
 
 //! HELPER FUNCTION TO VISUALIZE DB

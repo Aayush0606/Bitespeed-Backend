@@ -8,6 +8,7 @@ import {
   insertChildrenDB,
   generateResponse,
   updateParent,
+  clearDB,
 } from "./utils.js";
 
 const app = express();
@@ -17,6 +18,11 @@ app.use(express.urlencoded({ extended: true }));
 app.use(async (req, res, next) => {
   await connectDB();
   next();
+});
+
+app.get("/", async (req, res) => {
+  await clearDB();
+  return res.send("App working fine!!");
 });
 
 app.post("/identify", async (req, res) => {
